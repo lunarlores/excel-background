@@ -1,0 +1,65 @@
+Public Declare PtrSafe Function SystemParametersInfoA Lib "User32.dll" _
+    (ByVal uAction As Integer, ByVal uParam As Integer, _
+     ByVal lpvParam As String, ByVal fuWinIni As Integer) As Integer
+     
+Dim nextUpdate As Date
+
+Sub rangeToBitmap(rng As Range, fPath As String)
+    ' Converts a range (rng) to a png file
+    
+    Dim zoomVal As Long
+    Dim tempChart As ChartObject
+    zoomVal = 100 / rng.Parent.Parent.Windows(1).Zoom
+    rng.CopyPicture xlScreen, xlPicture
+    Set tempChart = rng.Parent.ChartObjects.Add(0, 0, rng.Width * zoomVal, rng.Height * zoomVal)
+    rng.Parent.Select
+    tempChart.Select
+    tempChart.Chart.Paste
+    tempChart.Chart.Export fPath, "png"
+    tempChart.Delete
+End Sub
+
+Sub updateBackground(fPath As String, Optional bgStyle As String = "Tile")
+    ' Updates background to picture located at fPath with style bgStyle
+    ' Default background style is centered, but "Tile", "Fill", "Fit", and "Stretch" are also available
+    ' Picture must be a .bmp file
+
+    Dim shell As Object
+    Set shell = CreateObject("WScript.Shell")
+    
+    ' Set TileWallpaper to 1 if bgStyle is "Tile", otherwise set to 0
+    shell.RegWrite "HKCU\Control Panel\Desktop\TileWallpaper", IIf(bgStyle = "Tile", 1, 0)
+    
+    ' Set WallpaperStyle according to bgStyle
+    If bgStyle = "Tile" Then
+        shell.RegWrite "HKCU\Control Panel\Desktop\WallpaperStyle", 0
+    Else
+        shell.RegWrite "HKCU\Control Panel\Desktop\WallpaperStyle", parseBGStyle(bgStyle)
+    End If
+    
+    shell.RegWrite "HKCU\Control Panel\Desktop\Wallpaper", fPath
+    
+    ' Update the desktop wallpaper
+    Call SystemParametersInfoA(20, 0, fPath, 1)
+    
+    Set shell = Nothing
+End Sub
+
+Function parseBGStyle(bgStyle As String) As Long
+    ' Parses string of background style to return correct numeric value
+    
+    Select Case bgStyle
+        Case "Fill"
+            parseBGStyle = 10
+        Case "Fit"
+            parseBGStyle = 6
+        Case "Stretch"
+            parseBGStyle = 2
+        Case Else
+            parseBGStyle = 0
+    End Select
+End Function
+
+
+
+
